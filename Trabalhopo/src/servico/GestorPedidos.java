@@ -19,10 +19,16 @@ public class GestorPedidos {
         return new Pedido(proximaSenha++, cliente);
     }
 
-    public boolean adicionarItemAoPedido(Pedido pedido, ItemMenu item, String alteracao) {
-        if (!item.reduzirStock()) return false;
-        if (!pedido.adicionarItem(new ItemPedido(item, alteracao))) {
-            item.adicionarStock(1);
+    public boolean adicionarItemAoPedido(Pedido pedido, ItemMenu item, String alteracao, int quantidade) {
+        if (quantidade <= 0) return false;
+        for (int i = 0; i < quantidade; i++) {
+            if (!item.reduzirStock()) {
+                item.adicionarStock(i);
+                return false;
+            }
+        }
+        if (!pedido.adicionarItem(new ItemPedido(item, alteracao, quantidade))) {
+            item.adicionarStock(quantidade);
             return false;
         }
         return true;
@@ -30,14 +36,14 @@ public class GestorPedidos {
 
     public boolean removerItemDoPedido(Pedido pedido, int indice) {
         if (indice < 0 || indice >= pedido.getItens().size()) return false;
-        ItemMenu item = pedido.getItens().get(indice).getItem();
-        item.adicionarStock(1);
+        ItemPedido itemPedido = pedido.getItens().get(indice);
+        itemPedido.getItem().adicionarStock(itemPedido.getQuantidade());
         return pedido.removerItem(indice);
     }
 
     public void cancelarPedido(Pedido pedido) {
         for (ItemPedido ip : new ArrayList<>(pedido.getItens())) {
-            ip.getItem().adicionarStock(1);
+            ip.getItem().adicionarStock(ip.getQuantidade());
         }
         pedido.limparItens();
     }
@@ -116,7 +122,7 @@ public class GestorPedidos {
             for (ItemPedido ip : p.getItens()) {
                 String nome = ip.getItem().getNome();
                 contagem.computeIfAbsent(nome, k -> new int[]{0});
-                contagem.get(nome)[0]++;
+                contagem.get(nome)[0] += ip.getQuantidade();
             }
         }
 

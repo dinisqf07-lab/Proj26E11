@@ -56,7 +56,7 @@ public class Pedido {
 
     public double calcularTotal() {
         double total = 0;
-        for (ItemPedido ip : itens) total += ip.getItem().getPreco();
+        for (ItemPedido ip : itens) total += ip.getItem().getPreco() * ip.getQuantidade();
         return total;
     }
 }

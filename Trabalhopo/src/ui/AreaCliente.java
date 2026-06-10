@@ -109,14 +109,35 @@ public class AreaCliente {
             }
 
             ItemMenu escolhido = lista.get(esc - 1);
+            int quantidade = pedirQuantidade(escolhido);
+            if (quantidade <= 0) return;
             String alt = pedirAlteracao(escolhido);
-            if (!gestorPedidos.adicionarItemAoPedido(pedido, escolhido, alt)) {
-                System.out.println("Não foi possível adicionar o item; limite de 10 itens atingido ou sem stock.");
+            if (!gestorPedidos.adicionarItemAoPedido(pedido, escolhido, alt, quantidade)) {
+                System.out.println("Não foi possível adicionar o item; limite de 10 itens atingido ou stock insuficiente.");
                 return;
             }
-            System.out.println("Adicionado.");
+            System.out.println("Adicionado " + quantidade + "x " + escolhido.getNome() + ".");
         } catch (NumberFormatException e) {
             System.out.println("Entrada inválida.");
+        }
+    }
+
+    private int pedirQuantidade(ItemMenu item) {
+        System.out.print("Quantidade desejada (máximo " + item.getStock() + "): ");
+        try {
+            int qty = Integer.parseInt(sc.nextLine().trim());
+            if (qty <= 0) {
+                System.out.println("Quantidade inválida.");
+                return 0;
+            }
+            if (qty > item.getStock()) {
+                System.out.println("Stock insuficiente. Disponível: " + item.getStock());
+                return 0;
+            }
+            return qty;
+        } catch (NumberFormatException e) {
+            System.out.println("Entrada inválida.");
+            return 0;
         }
     }
 
