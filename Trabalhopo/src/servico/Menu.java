@@ -2,58 +2,72 @@ package servico;
 
 import modelo.ItemMenu;
 
+import java.text.Collator;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
 
 public class Menu {
-
     private List<ItemMenu> itens;
 
     public Menu() {
-        this.itens = new ArrayList<>();
+        itens = new ArrayList<>();
+        carregarItensPadrao();
     }
 
-    public void adicionarItem(ItemMenu item) {
-        itens.add(item);
+    private void carregarItensPadrao() {
+        // Bebidas
+        itens.add(new ItemMenu("Água", 0.80, "", ItemMenu.Tipo.BEBIDA,
+                List.of("nenhuma", "fresca", "natural", "com gás"), 20));
+        itens.add(new ItemMenu("Café", 0.70, "", ItemMenu.Tipo.BEBIDA,
+                List.of("nenhuma", "curto", "cheio", "meio cheio",
+                        "descafeinado", "com leite", "sem açúcar"), 30));
+        itens.add(new ItemMenu("Sumo de Laranja", 1.50, "Natural", ItemMenu.Tipo.BEBIDA,
+                List.of("nenhuma", "sem gelo", "com gelo", "sem açúcar"), 15));
+
+        // Salgados
+        itens.add(new ItemMenu("Croissant Misto", 1.80,
+                "Croissant com fiambre e queijo", ItemMenu.Tipo.SALGADO,
+                List.of("nenhuma", "aquecer", "sem queijo", "sem fiambre", "sem manteiga"), 10));
+        itens.add(new ItemMenu("Lanche Misto", 2.00,
+                "Pão com fiambre e queijo", ItemMenu.Tipo.SALGADO,
+                List.of("nenhuma", "aquecer", "sem queijo", "sem fiambre", "sem molho"), 10));
+        itens.add(new ItemMenu("Tosta Mista", 2.20,
+                "Pão de forma, fiambre e queijo", ItemMenu.Tipo.SALGADO,
+                List.of("nenhuma", "aquecer", "sem queijo", "sem fiambre", "sem manteiga"), 8));
+
+        // Doces
+        itens.add(new ItemMenu("Bolo de Arroz", 1.20, "", ItemMenu.Tipo.DOCE,
+                List.of("nenhuma", "aquecer", "para levar"), 12));
+        itens.add(new ItemMenu("Donut", 1.50, "Coberto com chocolate", ItemMenu.Tipo.DOCE,
+                List.of("nenhuma", "sem cobertura", "para levar"), 10));
+        itens.add(new ItemMenu("Pastel de Nata", 1.10, "", ItemMenu.Tipo.DOCE,
+                List.of("nenhuma", "aquecer", "com canela", "para levar"), 15));
     }
 
-    public List<ItemMenu> getTodos() {
-        return itens;
-    }
+    public List<ItemMenu> getTodosOrdenados() {
 
-//    public ItemMenu procurarPorId(int id) {
-//        for (ItemMenu i : itens) {
-//            if (i.getId() == id) {
-//                return i;
-//            }
-//        }
-//        return null;
-//    }
+        Collator collator = Collator.getInstance(new Locale("pt", "PT"));
 
-    // Devolve todos os itens por ordem alfabética de nome
-    public List<ItemMenu> listarTodosOrdenados() {
-        List<ItemMenu> copia = new ArrayList<>(itens);
-        copia.sort(Comparator.comparing(ItemMenu::getNome, String.CASE_INSENSITIVE_ORDER));
-        return copia;
-    }
-
-    // Devolve só os itens de um certo tipo, por ordem alfabética
-    public List<ItemMenu> listarPorTipo(String tipo) {
-        List<ItemMenu> resultado = new ArrayList<>();
-        for (ItemMenu i : itens) {
-            if (i.getTipo().name().equals(tipo)) {
-                resultado.add(i);
-            }
-        }
-        resultado.sort(Comparator.comparing(ItemMenu::getNome, String.CASE_INSENSITIVE_ORDER));
-        return resultado;
+        return itens.stream()
+                .sorted((a, b) -> collator.compare(a.getNome(), b.getNome()))
+                .collect(Collectors.toList());
     }
 
     public List<ItemMenu> getPorTipo(ItemMenu.Tipo tipo) {
+
+        Collator collator = Collator.getInstance(new Locale("pt", "PT"));
+
         return itens.stream()
-                .filter(item-> item.getTipo().equals(tipo))
-                .toList();
+                .filter(i -> i.getTipo() == tipo)
+                .sorted((a,b) -> collator.compare(a.getNome(), b.getNome()))
+                .collect(Collectors.toList());
+    }
+
+    /** Devolve todos os itens (com stock e sem stock) para gestão pelo funcionário */
+    public List<ItemMenu> getTodosParaGestao() {
+        return new ArrayList<>(itens);
     }
 }

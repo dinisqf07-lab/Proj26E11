@@ -1,9 +1,6 @@
 package ui;
 
-import modelo.Cliente;
-import modelo.ItemMenu;
-import modelo.ItemPedido;
-import modelo.Pedido;
+import modelo.*;
 import servico.GestorPedidos;
 import servico.Menu;
 
