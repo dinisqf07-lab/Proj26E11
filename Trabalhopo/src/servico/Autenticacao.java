@@ -4,41 +4,19 @@ import modelo.Cliente;
 import modelo.Funcionario;
 import modelo.Utilizador;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Autenticacao {
     private List<Utilizador> utilizadores;
+    private static final String CODIGO_FUNCIONARIO = "funcionarioupt";
 
     public Autenticacao() {
         utilizadores = new ArrayList<>();
-
-    }
-
-    public boolean validarPassword(String password) {
-        if (password == null || password.length() < 8) return false;
-        int numeros = 0;
-        boolean especial = false;
-        String especiais = "!@#$%^&*()-_=+[]{};:,.<>?/\\|`~'\"";
-        for (char c : password.toCharArray()) {
-            if (Character.isDigit(c)) numeros++;
-            else if (especiais.indexOf(c) >= 0) especial = true;
-        }
-        return numeros >= 2 && especial;
-    }
-
-    /**
-     * Valida número de telemóvel português:
-     * - Exatamente 9 dígitos
-     * - Começa por 9 (móvel) ou por +351 seguido de 9 dígitos começados por 9
-     */
-    public boolean validarTelemovel(String telemovel) {
-        if (telemovel == null) return false;
-        String t = telemovel.trim().replaceAll("\\s", "");
-        // aceita +351 no início
-        if (t.startsWith("+351")) t = t.substring(4);
-        // deve ter 9 dígitos e começar por 9
-        return t.matches("9[1236]\\d{7}");
+        utilizadores.add(new Funcionario("F001", hashPassword("Bar@2024"), "João"));
     }
 
     public boolean existeUtilizador(String id) {
@@ -47,13 +25,11 @@ public class Autenticacao {
         return false;
     }
 
-    private static final String CODIGO_FUNCIONARIO = "funcionarioupt";
-
     public Cliente registarCliente(String id, String password, String telemovel) {
         if (existeUtilizador(id)) return null;
-        if (!validarPassword(password)) return null;
-        if (!validarTelemovel(telemovel)) return null;
-        Cliente c = new Cliente(id, password, telemovel);
+        if (!Validacao.validarPassword(password)) return null;
+        if (!Validacao.validarTelemovel(telemovel)) return null;
+        Cliente c = new Cliente(id, hashPassword(password), telemovel);
         utilizadores.add(c);
         return c;
     }
@@ -61,17 +37,32 @@ public class Autenticacao {
     public Funcionario registarFuncionario(String id, String password, String nome, String codigoAcesso) {
         if (!CODIGO_FUNCIONARIO.equals(codigoAcesso)) return null;
         if (existeUtilizador(id)) return null;
-        if (!validarPassword(password)) return null;
-        Funcionario f = new Funcionario(id, password, nome);
+        if (!Validacao.validarPassword(password)) return null;
+        Funcionario f = new Funcionario(id, hashPassword(password), nome);
         utilizadores.add(f);
         return f;
     }
 
     public Utilizador login(String id, String password) {
+        String hashed = hashPassword(password);
         for (Utilizador u : utilizadores) {
-            if (u.getIdIdentificacao().equalsIgnoreCase(id) && u.getPassword().equals(password))
+            if (u.getIdIdentificacao().equalsIgnoreCase(id) && u.getPassword().equals(hashed))
                 return u;
         }
         return null;
+    }
+
+    private static String hashPassword(String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 não está disponível.", e);
+        }
     }
 }

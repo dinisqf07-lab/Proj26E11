@@ -11,5 +11,5 @@ public class Funcionario extends Utilizador {
     public String getNome() { return nome; }
 
     @Override
-    public String getTipo() { return "FUNCIONARIO"; }
+    public TipoUtilizador getTipo() { return TipoUtilizador.FUNCIONARIO; }
 }

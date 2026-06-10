@@ -12,5 +12,5 @@ public class Cliente extends Utilizador {
     public void setTelemovel(String telemovel) { this.telemovel = telemovel; }
 
     @Override
-    public String getTipo() { return "CLIENTE"; }
+    public TipoUtilizador getTipo() { return TipoUtilizador.CLIENTE; }
 }

@@ -1,10 +1,14 @@
 package ui;
 
+import modelo.Cliente;
+import modelo.Funcionario;
 import modelo.Utilizador;
 import servico.Autenticacao;
 import servico.GestorPedidos;
 import servico.Menu;
+import servico.Validacao;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 public class MenuPrincipal {
@@ -14,7 +18,7 @@ public class MenuPrincipal {
     private GestorPedidos gestorPedidos;
 
     public MenuPrincipal() {
-        sc = new Scanner(System.in);
+        sc = new Scanner(System.in, StandardCharsets.UTF_8);
         autenticacao = new Autenticacao();
         menu = new Menu();
         gestorPedidos = new GestorPedidos();
@@ -40,72 +44,98 @@ public class MenuPrincipal {
     }
 
     private void registarCliente() {
-        System.out.print("Nº de identificação: ");
-        String id = sc.nextLine().trim();
-        if (id.isEmpty()) { System.out.println("ID obrigatório."); return; }
+        System.out.println("\n--- Registar Cliente ---");
+        String id = lerTextoObrigatorio("Nº de identificação: ");
+        if (id == null) return;
 
-        System.out.println("Palavra-passe (mín. 8 caracteres, 2 números, 1 caractere especial):");
-        System.out.print("Password: ");
-        String pw = sc.nextLine();
-        if (!autenticacao.validarPassword(pw)) {
-            System.out.println("Password inválida. Requisitos: mínimo 8 caracteres, 2 números e 1 caractere especial.");
-            return;
-        }
+        String password = lerPasswordValido();
+        String telemovel = lerTelemovelValido();
 
-        System.out.print("Telemóvel (ex: 912345678 ou +351912345678): ");
-        String tel = sc.nextLine().trim();
-        if (!autenticacao.validarTelemovel(tel)) {
-            System.out.println("Telemóvel inválido. Deve ser um número português válido (ex: 912345678).");
-            return;
-        }
-
-        if (autenticacao.registarCliente(id, pw, tel) != null)
+        if (autenticacao.registarCliente(id, password, telemovel) != null) {
             System.out.println("Cliente registado com sucesso.");
-        else
+        } else {
             System.out.println("Erro: ID já existe.");
+        }
     }
 
     private void registarFuncionario() {
+        System.out.println("\n--- Registar Funcionário ---");
         System.out.print("Código de acesso: ");
         String codigo = sc.nextLine().trim();
 
-        System.out.print("Nº de identificação: ");
-        String id = sc.nextLine().trim();
-        if (id.isEmpty()) { System.out.println("ID obrigatório."); return; }
+        String id = lerTextoObrigatorio("Nº de identificação: ");
+        if (id == null) return;
 
-        System.out.print("Nome: ");
-        String nome = sc.nextLine().trim();
-        if (nome.isEmpty()) { System.out.println("Nome obrigatório."); return; }
+        String nome = lerTextoObrigatorio("Nome: ");
+        if (nome == null) return;
 
-        System.out.println("Palavra-passe (mín. 8 caracteres, 2 números, 1 caractere especial):");
-        System.out.print("Password: ");
-        String pw = sc.nextLine();
-        if (!autenticacao.validarPassword(pw)) {
-            System.out.println("Password inválida. Requisitos: mínimo 8 caracteres, 2 números e 1 caractere especial.");
-            return;
-        }
+        String password = lerPasswordValido();
 
-        modelo.Funcionario f = autenticacao.registarFuncionario(id, pw, nome, codigo);
+        Funcionario f = autenticacao.registarFuncionario(id, password, nome, codigo);
         if (f == null) {
             System.out.println("Registo falhado. Verifique o código de acesso ou se o ID já existe.");
         } else {
-            System.out.println("Funcionário \"" + f.getNome() + "\" registado com sucesso.");
+            System.out.println("Funcionário " + f.getNome() + " registado com sucesso.");
         }
     }
 
     private void fazerLogin() {
-        System.out.print("Nº de identificação: ");
-        String id = sc.nextLine().trim();
+        System.out.println("\n--- Iniciar Sessão ---");
+        String id = lerTextoObrigatorio("Nº de identificação: ");
+        if (id == null) return;
+
         System.out.print("Password: ");
         String pw = sc.nextLine();
 
         Utilizador u = autenticacao.login(id, pw);
-        if (u == null) { System.out.println("Credenciais inválidas."); return; }
+        if (u == null) {
+            System.out.println("Credenciais inválidas.");
+            return;
+        }
 
-        if (u.getTipo().equals("CLIENTE")) {
-            new AreaCliente(sc, (modelo.Cliente) u, menu, gestorPedidos).abrir();
+        if (u instanceof Cliente) {
+            Cliente cliente = (Cliente) u;
+            new AreaCliente(sc, cliente, menu, gestorPedidos).abrir();
+        } else if (u instanceof Funcionario) {
+            Funcionario funcionario = (Funcionario) u;
+            new AreaFuncionario(sc, funcionario, gestorPedidos, menu).abrir();
         } else {
-            new AreaFuncionario(sc, (modelo.Funcionario) u, gestorPedidos, menu).abrir();
+            System.out.println("Tipo de utilizador desconhecido.");
+        }
+    }
+
+    private String lerTextoObrigatorio(String prompt) {
+        System.out.print(prompt);
+        String valor = sc.nextLine().trim();
+        if (valor.isEmpty()) {
+            System.out.println("Valor obrigatório.");
+            return null;
+        }
+        return valor;
+    }
+
+    private String lerPasswordValido() {
+        while (true) {
+            System.out.println("Palavra-passe (mín. 8 caracteres, 2 números, 1 caractere especial):");
+            System.out.print("Password: ");
+            String password = sc.nextLine();
+            if (!Validacao.validarPassword(password)) {
+                System.out.println("Password inválida. Requisitos: mínimo 8 caracteres, 2 números e 1 caractere especial.");
+                continue;
+            }
+            return password;
+        }
+    }
+
+    private String lerTelemovelValido() {
+        while (true) {
+            System.out.print("Telemóvel (ex: 912345678 ou +351912345678): ");
+            String telemovel = sc.nextLine().trim();
+            if (!Validacao.validarTelemovel(telemovel)) {
+                System.out.println("Telemóvel inválido. Deve ser um número português válido.");
+                continue;
+            }
+            return telemovel;
         }
     }
 

@@ -13,5 +13,5 @@ public abstract class Utilizador {
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
 
-    public abstract String getTipo();
+    public abstract TipoUtilizador getTipo();
 }

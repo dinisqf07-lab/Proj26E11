@@ -1,8 +1,6 @@
 package servico;
 
-import modelo.Cliente;
-import modelo.ItemPedido;
-import modelo.Pedido;
+import modelo.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,11 +19,32 @@ public class GestorPedidos {
         return new Pedido(proximaSenha++, cliente);
     }
 
+    public boolean adicionarItemAoPedido(Pedido pedido, ItemMenu item, String alteracao) {
+        if (!item.reduzirStock()) return false;
+        if (!pedido.adicionarItem(new ItemPedido(item, alteracao))) {
+            item.adicionarStock(1);
+            return false;
+        }
+        return true;
+    }
+
+    public boolean removerItemDoPedido(Pedido pedido, int indice) {
+        if (indice < 0 || indice >= pedido.getItens().size()) return false;
+        ItemMenu item = pedido.getItens().get(indice).getItem();
+        item.adicionarStock(1);
+        return pedido.removerItem(indice);
+    }
+
+    public void cancelarPedido(Pedido pedido) {
+        for (ItemPedido ip : new ArrayList<>(pedido.getItens())) {
+            ip.getItem().adicionarStock(1);
+        }
+        pedido.limparItens();
+    }
+
     public void registarPedido(Pedido p) {
         pedidos.add(p);
-        // simula envio SMS
-        System.out.println("\n>>> [SMS para " + p.getCliente().getTelemovel() +
-                "] A sua senha é: " + p.getSenha() + " <<<\n");
+        System.out.println("\n>>> [SMS para " + p.getCliente().getTelemovel() + "] A sua senha é: " + p.getSenha() + " <<<\n");
     }
 
     public Pedido procurarPorSenha(int senha) {
@@ -35,34 +54,30 @@ public class GestorPedidos {
     }
 
     public List<Pedido> getPendentes() {
-        return getPorEstado(Pedido.Estado.PENDENTE);
+        return getPorEstado(PedidoEstado.PENDENTE);
     }
 
-    public List<Pedido> getPorEstado(Pedido.Estado estado) {
+    public List<Pedido> getPorEstado(PedidoEstado estado) {
         return pedidos.stream()
                 .filter(p -> p.getEstado() == estado)
                 .collect(Collectors.toList());
     }
 
-    public List<Pedido> getTodos() {
-        return pedidos;
-    }
+    public List<Pedido> getTodos() { return new ArrayList<>(pedidos); }
 
-    public boolean alterarEstado(Pedido p, Pedido.Estado novo) {
-        Pedido.Estado atual = p.getEstado();
-        if (novo == Pedido.Estado.EM_PREPARACAO && atual == Pedido.Estado.PENDENTE) {
+    public boolean alterarEstado(Pedido p, PedidoEstado novo) {
+        PedidoEstado atual = p.getEstado();
+        if (novo == PedidoEstado.EM_PREPARACAO && atual == PedidoEstado.PENDENTE) {
             p.setEstado(novo); return true;
         }
-        if (novo == Pedido.Estado.PRONTO && atual == Pedido.Estado.EM_PREPARACAO) {
+        if (novo == PedidoEstado.PRONTO && atual == PedidoEstado.EM_PREPARACAO) {
             p.setEstado(novo); return true;
         }
-        if (novo == Pedido.Estado.ENTREGUE && atual == Pedido.Estado.PRONTO && p.isPago()) {
+        if (novo == PedidoEstado.ENTREGUE && atual == PedidoEstado.PRONTO && p.isPago()) {
             p.setEstado(novo); return true;
         }
         return false;
     }
-
-    // Relatório diário
 
     public String gerarRelatorio() {
         StringBuilder sb = new StringBuilder();
@@ -70,12 +85,12 @@ public class GestorPedidos {
         sb.append("       RELATÓRIO DE VENDAS DO DIA       \n");
         sb.append("========================================\n\n");
 
-        List<Pedido> entregues = getPorEstado(Pedido.Estado.ENTREGUE);
+        List<Pedido> entregues = getPorEstado(PedidoEstado.ENTREGUE);
         int totalPedidos = pedidos.size();
         int totalEntregues = entregues.size();
-        int totalPendentes = getPorEstado(Pedido.Estado.PENDENTE).size();
-        int totalEmPrep = getPorEstado(Pedido.Estado.EM_PREPARACAO).size();
-        int totalProntos = getPorEstado(Pedido.Estado.PRONTO).size();
+        int totalPendentes = getPorEstado(PedidoEstado.PENDENTE).size();
+        int totalEmPrep = getPorEstado(PedidoEstado.EM_PREPARACAO).size();
+        int totalProntos = getPorEstado(PedidoEstado.PRONTO).size();
 
         sb.append(String.format("Total de pedidos registados : %d%n", totalPedidos));
         sb.append(String.format("  - Entregues               : %d%n", totalEntregues));
@@ -89,16 +104,14 @@ public class GestorPedidos {
             return sb.toString();
         }
 
-        // Contagem e receita por item
         java.util.Map<String, int[]> contagem = new java.util.LinkedHashMap<>();
-        // int[0] = quantidade, int[1] = receita*100 (para evitar double)
         double totalReceita = 0;
         int pagDinheiro = 0, pagMBWay = 0;
 
         for (Pedido p : entregues) {
             totalReceita += p.calcularTotal();
-            if (p.getFormaPagamento() == Pedido.FormaPagamento.DINHEIRO) pagDinheiro++;
-            else if (p.getFormaPagamento() == Pedido.FormaPagamento.MBWAY) pagMBWay++;
+            if (p.getFormaPagamento() == FormaPagamento.DINHEIRO) pagDinheiro++;
+            else if (p.getFormaPagamento() == FormaPagamento.MBWAY) pagMBWay++;
 
             for (ItemPedido ip : p.getItens()) {
                 String nome = ip.getItem().getNome();
@@ -108,7 +121,6 @@ public class GestorPedidos {
         }
 
         sb.append("--- Itens vendidos ---\n");
-        // ordenar por quantidade descendente
         contagem.entrySet().stream()
                 .sorted((a, b) -> b.getValue()[0] - a.getValue()[0])
                 .forEach(e -> sb.append(String.format("  %-20s : %d unidade(s)%n",

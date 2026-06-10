@@ -61,9 +61,9 @@ public class AreaCliente {
             System.out.print("Opção: ");
             String op = sc.nextLine().trim();
             switch (op) {
-                case "1" -> adicionarDoTipo(pedido, ItemMenu.Tipo.BEBIDA);
-                case "2" -> adicionarDoTipo(pedido, ItemMenu.Tipo.SALGADO);
-                case "3" -> adicionarDoTipo(pedido, ItemMenu.Tipo.DOCE);
+                case "1" -> adicionarDoTipo(pedido, ItemTipo.BEBIDA);
+                case "2" -> adicionarDoTipo(pedido, ItemTipo.SALGADO);
+                case "3" -> adicionarDoTipo(pedido, ItemTipo.DOCE);
                 case "4" -> verCarrinho(pedido);
                 case "5" -> {
                     if (pedido.getItens().isEmpty()) {
@@ -73,9 +73,7 @@ public class AreaCliente {
                     }
                 }
                 case "0" -> {
-                    // devolve stock dos itens já adicionados ao carrinho
-                    for (ItemPedido ip : pedido.getItens())
-                        ip.getItem().setStock(ip.getItem().getStock() + 1);
+                    gestorPedidos.cancelarPedido(pedido);
                     System.out.println("Pedido cancelado.");
                     return;
                 }
@@ -84,12 +82,11 @@ public class AreaCliente {
         }
     }
 
-    private void adicionarDoTipo(Pedido pedido, ItemMenu.Tipo tipo) {
+    private void adicionarDoTipo(Pedido pedido, ItemTipo tipo) {
         if (pedido.getItens().size() >= 10) {
             System.out.println("Já atingiu o limite de 10 itens.");
             return;
         }
-        // só mostra itens com stock
         List<ItemMenu> lista = menu.getPorTipo(tipo).stream()
                 .filter(ItemMenu::temStock)
                 .collect(java.util.stream.Collectors.toList());
@@ -106,14 +103,17 @@ public class AreaCliente {
         try {
             int esc = Integer.parseInt(sc.nextLine().trim());
             if (esc == 0) return;
-            if (esc < 1 || esc > lista.size()) { System.out.println("Inválido."); return; }
+            if (esc < 1 || esc > lista.size()) {
+                System.out.println("Inválido.");
+                return;
+            }
 
             ItemMenu escolhido = lista.get(esc - 1);
-            // reserva stock imediatamente
-            escolhido.reduzirStock();
-
             String alt = pedirAlteracao(escolhido);
-            pedido.adicionarItem(new ItemPedido(escolhido, alt));
+            if (!gestorPedidos.adicionarItemAoPedido(pedido, escolhido, alt)) {
+                System.out.println("Não foi possível adicionar o item; limite de 10 itens atingido ou sem stock.");
+                return;
+            }
             System.out.println("Adicionado.");
         } catch (NumberFormatException e) {
             System.out.println("Entrada inválida.");
@@ -157,11 +157,11 @@ public class AreaCliente {
         try {
             int r = Integer.parseInt(sc.nextLine().trim());
             if (r > 0 && r <= pedido.getItens().size()) {
-                // devolve stock ao remover do carrinho
-                ItemMenu itemRemovido = pedido.getItens().get(r - 1).getItem();
-                itemRemovido.setStock(itemRemovido.getStock() + 1);
-                pedido.removerItem(r - 1);
-                System.out.println("Removido.");
+                if (gestorPedidos.removerItemDoPedido(pedido, r - 1)) {
+                    System.out.println("Removido.");
+                } else {
+                    System.out.println("Não foi possível remover o item.");
+                }
             }
         } catch (NumberFormatException e) { /* ignora */ }
     }
@@ -183,20 +183,18 @@ public class AreaCliente {
         System.out.print("Opção: ");
         String op = sc.nextLine().trim();
         if (op.equals("1")) {
-            pedido.setFormaPagamento(Pedido.FormaPagamento.DINHEIRO);
+            pedido.setFormaPagamento(FormaPagamento.DINHEIRO);
             pedido.setPago(false); // pagamento pendente — confirmar no balcão
             System.out.println("Dirija-se ao balcão para pagar antes de levantar o pedido.");
         } else if (op.equals("2")) {
-            pedido.setFormaPagamento(Pedido.FormaPagamento.MBWAY);
+            pedido.setFormaPagamento(FormaPagamento.MBWAY);
             pedido.setPago(true); // MBWay pago imediatamente
             System.out.print("Indique o nº MBWay: ");
             sc.nextLine();
             System.out.println("Pagamento MBWay efetuado.");
         } else {
             System.out.println("Forma inválida. Pedido cancelado.");
-            // devolve stock
-            for (ItemPedido ip : pedido.getItens())
-                ip.getItem().setStock(ip.getItem().getStock() + 1);
+            gestorPedidos.cancelarPedido(pedido);
             return false;
         }
 

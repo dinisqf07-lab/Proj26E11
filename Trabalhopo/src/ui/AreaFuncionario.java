@@ -1,11 +1,9 @@
 package ui;
 
-import modelo.Funcionario;
-import modelo.ItemMenu;
-import modelo.ItemPedido;
-import modelo.Pedido;
+import modelo.*;
 import servico.GestorPedidos;
 import servico.Menu;
+import servico.Validacao;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -79,10 +77,10 @@ public class AreaFuncionario {
         String titulo;
         switch (op) {
             case "1" -> { lista = gestorPedidos.getTodos();                                 titulo = "TODOS"; }
-            case "2" -> { lista = gestorPedidos.getPorEstado(Pedido.Estado.PENDENTE);       titulo = "PENDENTES"; }
-            case "3" -> { lista = gestorPedidos.getPorEstado(Pedido.Estado.EM_PREPARACAO);  titulo = "EM PREPARAÇÃO"; }
-            case "4" -> { lista = gestorPedidos.getPorEstado(Pedido.Estado.PRONTO);         titulo = "PRONTOS"; }
-            case "5" -> { lista = gestorPedidos.getPorEstado(Pedido.Estado.ENTREGUE);       titulo = "ENTREGUES"; }
+            case "2" -> { lista = gestorPedidos.getPorEstado(PedidoEstado.PENDENTE);       titulo = "PENDENTES"; }
+            case "3" -> { lista = gestorPedidos.getPorEstado(PedidoEstado.EM_PREPARACAO);  titulo = "EM PREPARAÇÃO"; }
+            case "4" -> { lista = gestorPedidos.getPorEstado(PedidoEstado.PRONTO);         titulo = "PRONTOS"; }
+            case "5" -> { lista = gestorPedidos.getPorEstado(PedidoEstado.ENTREGUE);       titulo = "ENTREGUES"; }
             default  -> { System.out.println("Filtro inválido."); return; }
         }
 
@@ -113,9 +111,9 @@ public class AreaFuncionario {
             System.out.println("2 - PRONTO");
             System.out.print("Opção: ");
             String op = sc.nextLine().trim();
-            Pedido.Estado novo;
-            if (op.equals("1"))      novo = Pedido.Estado.EM_PREPARACAO;
-            else if (op.equals("2")) novo = Pedido.Estado.PRONTO;
+            PedidoEstado novo;
+            if (op.equals("1"))      novo = PedidoEstado.EM_PREPARACAO;
+            else if (op.equals("2")) novo = PedidoEstado.PRONTO;
             else { System.out.println("Inválido."); return; }
 
             if (gestorPedidos.alterarEstado(p, novo))
@@ -150,7 +148,7 @@ public class AreaFuncionario {
 
     private void listarPorPagar() {
         List<Pedido> porPagar = gestorPedidos.getTodos().stream()
-                .filter(p -> p.getFormaPagamento() == Pedido.FormaPagamento.DINHEIRO && !p.isPago())
+                .filter(p -> p.getFormaPagamento() == FormaPagamento.DINHEIRO && !p.isPago())
                 .collect(Collectors.toList());
 
         if (porPagar.isEmpty()) {
@@ -176,7 +174,7 @@ public class AreaFuncionario {
                 System.out.println("Este pedido já está marcado como PAGO.");
                 return;
             }
-            if (p.getFormaPagamento() == Pedido.FormaPagamento.MBWAY) {
+            if (p.getFormaPagamento() == FormaPagamento.MBWAY) {
                 System.out.println("Pedido com pagamento MBWay — é marcado como pago automaticamente.");
                 return;
             }
@@ -189,7 +187,11 @@ public class AreaFuncionario {
                 return;
             }
             p.setPago(true);
-            System.out.println("Pedido " + s + " marcado como PAGO.");
+            if (p.getEstado() == PedidoEstado.PRONTO && gestorPedidos.alterarEstado(p, PedidoEstado.ENTREGUE)) {
+                System.out.println("Pedido " + s + " marcado como PAGO e ENTREGUE.");
+            } else {
+                System.out.println("Pedido " + s + " marcado como PAGO.");
+            }
         } catch (NumberFormatException e) {
             System.out.println("Senha inválida.");
         }
@@ -220,7 +222,7 @@ public class AreaFuncionario {
             Pedido p = gestorPedidos.procurarPorSenha(s);
             if (p == null) { System.out.println("Pedido não encontrado."); return; }
 
-            if (p.getEstado() != Pedido.Estado.PRONTO) {
+            if (p.getEstado() != PedidoEstado.PRONTO) {
                 System.out.println("Só é possível dar baixa em pedidos com estado PRONTO.");
                 System.out.println("Estado atual: " + p.getEstado());
                 return;
@@ -232,7 +234,7 @@ public class AreaFuncionario {
                 return;
             }
 
-            if (gestorPedidos.alterarEstado(p, Pedido.Estado.ENTREGUE)) {
+            if (gestorPedidos.alterarEstado(p, PedidoEstado.ENTREGUE)) {
                 System.out.println("Senha " + s + " marcada como ENTREGUE.");
                 mostrarDetalhes(p);
             }
@@ -300,7 +302,7 @@ public class AreaFuncionario {
         System.out.println("Itens:");
         for (ItemPedido ip : p.getItens()) {
             String aviso = "";
-            String alt = ip.getAlteracao().toLowerCase();
+            String alt = Validacao.normalizarTexto(ip.getAlteracao()).toLowerCase();
             if (alt.contains("aquecer") || alt.contains("aquec")) aviso = "  <-- AQUECER";
             System.out.println("  - " + ip.getItem().getNome() +
                     " [alteração: " + ip.getAlteracao() + "]" + aviso);
