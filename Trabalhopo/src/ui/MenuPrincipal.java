@@ -73,7 +73,7 @@ public class MenuPrincipal {
         if (u.getTipo().equals("CLIENTE")) {
             new AreaCliente(sc, (modelo.Cliente) u, menu, gestorPedidos).abrir();
         } else {
-            new AreaFuncionario(sc, (modelo.Funcionario) u, gestorPedidos).abrir();
+            new AreaFuncionario(sc,  u, gestorPedidos).abrir();
         }
     }
 

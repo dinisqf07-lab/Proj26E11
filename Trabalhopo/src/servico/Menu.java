@@ -3,6 +3,7 @@ package servico;
 import modelo.ItemMenu;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -22,14 +23,14 @@ public class Menu {
         return itens;
     }
 
-    public ItemMenu procurarPorId(int id) {
-        for (ItemMenu i : itens) {
-            if (i.getId() == id) {
-                return i;
-            }
-        }
-        return null;
-    }
+//    public ItemMenu procurarPorId(int id) {
+//        for (ItemMenu i : itens) {
+//            if (i.getId() == id) {
+//                return i;
+//            }
+//        }
+//        return null;
+//    }
 
     // Devolve todos os itens por ordem alfabética de nome
     public List<ItemMenu> listarTodosOrdenados() {
@@ -42,11 +43,17 @@ public class Menu {
     public List<ItemMenu> listarPorTipo(String tipo) {
         List<ItemMenu> resultado = new ArrayList<>();
         for (ItemMenu i : itens) {
-            if (i.getTipo().equalsIgnoreCase(tipo)) {
+            if (i.getTipo().name().equals(tipo)) {
                 resultado.add(i);
             }
         }
         resultado.sort(Comparator.comparing(ItemMenu::getNome, String.CASE_INSENSITIVE_ORDER));
         return resultado;
+    }
+
+    public List<ItemMenu> getPorTipo(ItemMenu.Tipo tipo) {
+        return itens.stream()
+                .filter(item-> item.getTipo().equals(tipo))
+                .toList();
     }
 }

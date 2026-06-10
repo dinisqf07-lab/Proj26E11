@@ -1,6 +1,6 @@
 package Principal;
 
-mport modelo.Funcionario;
+import modelo.Funcionario;
 import modelo.ItemPedido;
 import modelo.Pedido;
 import servico.GestorPedidos;
@@ -11,12 +11,12 @@ import java.util.Scanner;
 public class AreaFuncionario {
     private Scanner sc;
     private Funcionario funcionario;
-    private gestorPedidos gestorPedidos;
+    private GestorPedidos gestorPedidos;
 
     public AreaFuncionario(Scanner sc, Funcionario f, GestorPedidos gp){
         this.sc = sc;
         this.funcionario = f;
-        this.gestrPedidos = gp;
+        this.gestorPedidos = gp;
     }
 
     public void abrir() {
@@ -40,7 +40,7 @@ public class AreaFuncionario {
     }
 
     private void listarPendentes() {
-        List<Pedido> pendentes = gestorpedidos.getPendentes();
+        List<Pedido> pendentes = gestorPedidos.getPendentes();
         if (pendentes.isEmpty()) {
             System.out.println("Não existem pedidos pendentes.");
             return;
@@ -101,7 +101,7 @@ public class AreaFuncionario {
             else if (op.equals("2")) novo = Pedido.Estado.PRONTO;
             else { System.out.println("Inválido."); return; }
 
-            if (gestorPedidos.alterarestado(p, novo))
+            if (gestorPedidos.alterarEstado(p, novo))
                 System.out.println("Estado alterado para " + novo);
             else
                 System.out.println("Transição não permitida (atual: " + p.getEstado()+ ").");

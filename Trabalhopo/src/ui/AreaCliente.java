@@ -1,6 +1,9 @@
-package Principal;
+package ui;
 
-import modelo.*;
+import modelo.Cliente;
+import modelo.ItemMenu;
+import modelo.ItemPedido;
+import modelo.Pedido;
 import servico.GestorPedidos;
 import servico.Menu;
 
@@ -40,14 +43,13 @@ public class AreaCliente {
     }
 
     private void consultarMenu() {
-        System.out.println("\n=== MENU (ordem alfabética) ===");
-        for (ItemMenu i : menu.getTodos())
-            System.out.println("- " + i);
+        System.out.println("\n=== MENU ===");
+        for (ItemMenu i : menu.getTodosOrdenados())
+            System.out.println("- " + i.toStringCliente());
     }
 
     private void realizarPedido() {
         Pedido pedido = gestorPedidos.criarPedido(cliente);
-
 
         boolean continuar = true;
         while (continuar) {
@@ -73,7 +75,13 @@ public class AreaCliente {
                         continuar = false;
                     }
                 }
-                case "0" -> { System.out.println("Pedido cancelado."); return; }
+                case "0" -> {
+                    // devolve stock dos itens já adicionados ao carrinho
+                    for (ItemPedido ip : pedido.getItens())
+                        ip.getItem().setStock(ip.getItem().getStock() + 1);
+                    System.out.println("Pedido cancelado.");
+                    return;
+                }
                 default -> System.out.println("Opção inválida.");
             }
         }
@@ -84,19 +92,29 @@ public class AreaCliente {
             System.out.println("Já atingiu o limite de 10 itens.");
             return;
         }
-        List<ItemMenu> lista = menu.getPorTipo(tipo);
+        // só mostra itens com stock
+        List<ItemMenu> lista = menu.getPorTipo(tipo).stream()
+                .filter(ItemMenu::temStock)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (lista.isEmpty()) {
+            System.out.println("Não existem itens disponíveis nesta categoria.");
+            return;
+        }
+
         System.out.println("\n-- " + tipo + " --");
         for (int i = 0; i < lista.size(); i++)
-            System.out.println((i + 1) + " - " + lista.get(i));
+            System.out.println((i + 1) + " - " + lista.get(i).toStringCliente());
         System.out.print("Escolha (0 para voltar): ");
         try {
             int esc = Integer.parseInt(sc.nextLine().trim());
             if (esc == 0) return;
-            if (esc < 1 || esc > lista.size()) {
-                System.out.println("Inválido.");
-                return;
-            }
+            if (esc < 1 || esc > lista.size()) { System.out.println("Inválido."); return; }
+
             ItemMenu escolhido = lista.get(esc - 1);
+            // reserva stock imediatamente
+            escolhido.reduzirStock();
+
             String alt = pedirAlteracao(escolhido);
             pedido.adicionarItem(new ItemPedido(escolhido, alt));
             System.out.println("Adicionado.");
@@ -109,38 +127,42 @@ public class AreaCliente {
         List<String> opcoes = item.getAlteracoesPossiveis();
 
         System.out.println("\nAlterações disponíveis para " + item.getNome() + ":");
+        System.out.println("  0 - Sem alteração (continuar)");
         for (int i = 0; i < opcoes.size(); i++)
             System.out.println("  " + (i + 1) + " - " + opcoes.get(i));
         System.out.println("  " + (opcoes.size() + 1) + " - Outra (escrever)");
-        System.out.print("Opção: ");
+        System.out.print("Opção (Enter ou 0 para nenhuma): ");
+
+        String linha = sc.nextLine().trim();
+        // Enter em branco = sem alteração
+        if (linha.isEmpty()) return "nenhuma";
 
         try {
-            int op = Integer.parseInt(sc.nextLine().trim());
-            if (op >= 1 && op <= opcoes.size()) {
-                return opcoes.get(op - 1);
-            }
+            int op = Integer.parseInt(linha);
+            if (op == 0) return "nenhuma";
+            if (op >= 1 && op <= opcoes.size()) return opcoes.get(op - 1);
             if (op == opcoes.size() + 1) {
                 System.out.print("Indique a alteração: ");
                 String livre = sc.nextLine().trim();
                 return livre.isBlank() ? "nenhuma" : livre;
             }
         } catch (NumberFormatException ignored) { }
-        return "nenhuma.";
+        return "nenhuma";
     }
 
     private void verCarrinho(Pedido pedido) {
-        if (pedido.getItens().isEmpty()) {
-            System.out.println("Carrinho vazio.");
-            return;
-        }
-        System.out.println("\n--- Carrinho ---");
+        if (pedido.getItens().isEmpty()) { System.out.println("Carrinho vazio."); return; }
+        System.out.println("\n-- Carrinho --");
         for (int i = 0; i < pedido.getItens().size(); i++)
             System.out.println((i + 1) + " - " + pedido.getItens().get(i));
         System.out.printf("Total: %.2f€%n", pedido.calcularTotal());
         System.out.print("Remover item? (nº ou 0 para voltar): ");
         try {
             int r = Integer.parseInt(sc.nextLine().trim());
-            if (r > 0) {
+            if (r > 0 && r <= pedido.getItens().size()) {
+                // devolve stock ao remover do carrinho
+                ItemMenu itemRemovido = pedido.getItens().get(r - 1).getItem();
+                itemRemovido.setStock(itemRemovido.getStock() + 1);
                 pedido.removerItem(r - 1);
                 System.out.println("Removido.");
             }
@@ -165,31 +187,33 @@ public class AreaCliente {
         String op = sc.nextLine().trim();
         if (op.equals("1")) {
             pedido.setFormaPagamento(Pedido.FormaPagamento.DINHEIRO);
-            System.out.println("Dirija-se ao balcão para pagar.");
+            pedido.setPago(false); // pagamento pendente — confirmar no balcão
+            System.out.println("Dirija-se ao balcão para pagar antes de levantar o pedido.");
         } else if (op.equals("2")) {
             pedido.setFormaPagamento(Pedido.FormaPagamento.MBWAY);
+            pedido.setPago(true); // MBWay pago imediatamente
             System.out.print("Indique o nº MBWay: ");
             sc.nextLine();
             System.out.println("Pagamento MBWay efetuado.");
         } else {
             System.out.println("Forma inválida. Pedido cancelado.");
+            // devolve stock
+            for (ItemPedido ip : pedido.getItens())
+                ip.getItem().setStock(ip.getItem().getStock() + 1);
             return false;
         }
 
         gestorPedidos.registarPedido(pedido);
-        System.out.println("Pedido enviado ao bar, em estado PENDENTE.");
+        System.out.println("Pedido enviado ao bar com estado PENDENTE.");
         return true;
     }
 
     private void acompanharPedido() {
-        System.out.print("Nº de senha: ");
+        System.out.print("Nº da senha: ");
         try {
             int s = Integer.parseInt(sc.nextLine().trim());
             Pedido p = gestorPedidos.procurarPorSenha(s);
-            if (p == null) {
-                System.out.println("Senha não encontrada.");
-                return;
-            }
+            if (p == null) { System.out.println("Senha não encontrada."); return; }
             if (!p.getCliente().getIdIdentificacao().equals(cliente.getIdIdentificacao())) {
                 System.out.println("Esta senha não pertence à sua conta.");
                 return;

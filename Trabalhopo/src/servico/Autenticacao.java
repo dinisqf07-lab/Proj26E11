@@ -1,6 +1,7 @@
 package servico;
 
 import modelo.Cliente;
+import modelo.Funcionario;
 import modelo.Utilizador;
 
 import java.util.ArrayList;
@@ -11,7 +12,7 @@ public class Autenticacao {
 
     public Autenticacao() {
         utilizadores = new ArrayList<>();
-        utilizadores.add(new Funcionario ("F001", "Bar@2026", "João"));
+        utilizadores.add(new Funcionario("F001", "Bar@2026", "João"));
     }
 
     public boolean validarPassword(String password) {
@@ -26,7 +27,7 @@ public class Autenticacao {
         return numeros >= 2 && especial;
     }
 
-    public existeCliente(String id) {
+    public boolean existeCliente(String id) {
         for (Utilizador u : utilizadores)
             if (u.getIdIdentificacao().equalsIgnoreCase(id)) return true;
         return false;
